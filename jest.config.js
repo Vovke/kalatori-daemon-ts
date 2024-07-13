@@ -6,7 +6,7 @@ dotenv.config({ path: './.env.test' });
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  setupFilesAfterEnv: ['./jest.setup.js'], // Reference to the setup file
+  setupFilesAfterEnv: ['./jest.setup.js'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: 'tsconfig.json',

@@ -1,0 +1,10 @@
+{
+  "type": "sqlite",
+  "database": "./kalatori.sqlite",
+  "entities": ["src/entities/*.ts"],
+  "logging": true,
+  "migrations": ["src/migration/*.ts"],
+  "cli": {
+    "migrationsDir": "src/migration"
+  }
+}

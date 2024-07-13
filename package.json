@@ -5,10 +5,11 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "tsc && node dist/server.js",
-    "dev": "ts-node-dev src/server.ts",
+    "dev": "NODE_ENV=development ts-node-dev src/server.ts",
     "test": "jest --config jest.config.js",
-    "test-detect-open": "jest --config jest.config.js --detectOpenHandles",
-    "typeorm": "ts-node ./node_modules/typeorm/cli.js --dataSource ./src/data-source.ts"
+    "typeorm": "ts-node ./node_modules/typeorm/cli.js --dataSource ./src/data-source.ts",
+    "migration:generate": "yarn typeorm migration:generate",
+    "migration:run": "yarn typeorm migration:run"
   },
   "dependencies": {
     "@polkadot/api": "^12.1.1",

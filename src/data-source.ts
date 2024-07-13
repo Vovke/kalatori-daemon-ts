@@ -1,16 +1,10 @@
 import { DataSource } from 'typeorm';
-import Config from './config/config';
-import entities from './entities';
+import * as path from 'path';
 
-const config = Config.getInstance().config;
+const env = process.env.NODE_ENV || 'development';
+const configPath = path.resolve(__dirname, `../config/ormconfig.${env}.json`);
 
-export const dataSource = new DataSource({
-  type: 'sqlite',
-  database: config.databaseUrl,
-  entities: entities,
-  synchronize: true, // Automatically sync the database schema
-  logging: !!config.debug,
-});
+export const dataSource = new DataSource(require(configPath));
 
 export const initializeDataSource = async (): Promise<void> => {
   if (!dataSource.isInitialized) {

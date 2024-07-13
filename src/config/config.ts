@@ -64,7 +64,7 @@ class Config {
       chains: chainConfig.chains,
       kalatori: {
         seed: process.env.KALATORI_SEED || "",
-        chainName: process.env.KALATORI_CHAIN_NAME || "polkadot",  // Default to polkadot if not specified
+        chainName: process.env.KALATORI_CHAIN_NAME || "polkadot",
         rpc: process.env.KALATORI_RPC || "",
         decimals: parseInt(process.env.KALATORI_DECIMALS || "10", 10),
         recipient: process.env.KALATORI_RECIPIENT || "",

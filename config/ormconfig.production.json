@@ -1,0 +1,7 @@
+{
+  "type": "sqlite",
+  "database": "./kalatori.sqlite",
+  "synchronize": false,
+  "entities": ["dist/entities/*.js"],
+  "logging": false
+}

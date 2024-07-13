@@ -1,10 +1,10 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import { logger } from './logger';
-import { getRepository } from 'typeorm';
 import { Order } from '../entities/order';
 import { logTransaction } from '../services/transactionService';
 import Config, { updateConfig } from '../config/config';
 import axios from 'axios';
+import dataSource from '../data-source';
 
 let api: ApiPromise | null = null;
 
@@ -42,7 +42,10 @@ export const connectPolkadot = async (retries: number = Config.getInstance().con
 
 export const subscribeToBlocks = async () => {
   const api = await connectPolkadot();
-  const orderRepository = getRepository(Order);
+  if (!dataSource.isInitialized) {
+    throw new Error('Data source is not initialized');
+  }
+  const orderRepository = dataSource.getRepository(Order);
 
   api.rpc.chain.subscribeNewHeads(async (header) => {
     logger.info(`New block #${header.number}`);

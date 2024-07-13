@@ -1,0 +1,20 @@
+{
+  "port": 16726,
+  "databaseUrl": "sqlite://./kalatori.sqlite",
+  "logLevel": "info",
+  "supportedCurrencies": {
+    "DOT": {
+      "decimals": 10
+    },
+    "USDC": {
+      "decimals": 6
+    },
+    "USDt": {
+      "decimals": 6
+    }
+  },
+  "blockchain": {
+    "maxRetries": 5,
+    "retryDelay": 1000
+  }
+}

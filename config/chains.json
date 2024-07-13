@@ -1,0 +1,50 @@
+{
+  "chains": [
+    {
+      "name": "polkadot",
+      "native_token": "DOT",
+      "decimals": 10,
+      "endpoints": [
+        "wss://rpc.polkadot.io",
+        "wss://1rpc.io/dot"
+      ]
+    },
+    {
+      "name": "statemint",
+      "native_token": "DOT",
+      "decimals": 10,
+      "endpoints": [
+        "wss://polkadot-asset-hub-rpc.polkadot.io",
+        "wss://statemint-rpc.dwellir.com"
+      ],
+      "assets": [
+        {
+          "name": "USDC",
+          "id": 1337
+        },
+        {
+          "name": "USDt",
+          "id": 1984
+        }
+      ]
+    },
+    {
+      "name": "chopsticks",
+      "native_token": "DOT",
+      "decimals": 10,
+      "endpoints": [
+        "ws://localhost:8000"
+      ],
+      "assets": [
+        {
+          "name": "USDC",
+          "id": 1337
+        },
+        {
+          "name": "USDt",
+          "id": 1984
+        }
+      ]
+    }
+  ]
+}

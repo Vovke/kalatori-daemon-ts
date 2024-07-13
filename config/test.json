@@ -1,0 +1,4 @@
+{
+  "logLevel": "debug",
+  "databaseUrl": "sqlite://./kalatori_test.sqlite"
+}

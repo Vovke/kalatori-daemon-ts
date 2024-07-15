@@ -1,10 +1,11 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { logger } from './logger';
-import { Order } from '../entities/order';
-import { logTransaction } from '../services/transactionService';
-import Config, { updateConfig } from '../config/config';
 import axios from 'axios';
+import { withdrawOrder } from '../services/orderService';
+import Config, { updateConfig } from '../config/config';
 import dataSource from '../data-source';
+import { Order, PaymentStatus, WithdrawalStatus } from '../entities/order';
+import { logTransaction } from '../services/transactionService';
+import { logger } from './logger';
 
 let api: ApiPromise | null = null;
 
@@ -58,12 +59,12 @@ export const subscribeToBlocks = async () => {
       if (section === 'balances' && (method === 'transfer' || method === 'transferKeepAlive')) {
         const [to, amount] = extrinsic.args.map(arg => arg.toString());
         const order = await orderRepository.findOne({ where: { paymentAccount: to } });
-        if (order && order.paymentStatus !== 'paid' && order.amount !== undefined) {
+        if (order && order.paymentStatus !== PaymentStatus.Paid && order.amount !== undefined) {
           const amountInUnits = parseFloat(amount) / Math.pow(10, chainDecimals);
           logger.info(`Transaction found for order ${order.orderId} in block #${header.number}`);
           order.repaidAmount = (order.repaidAmount || 0) + amountInUnits;
           if (order.amount && order.amount <= order.repaidAmount) {
-            order.paymentStatus = 'paid';
+            order.paymentStatus = PaymentStatus.Paid;
             logger.info(`Order with id: ${order.orderId} was succesfully repaid`);
           } else {
             logger.info(
@@ -107,6 +108,9 @@ export const subscribeToBlocks = async () => {
                 logger.error(`Unknown error notifying callback URL for order ${order.orderId}`);
               }
             }
+          }
+          if (order.paymentStatus === PaymentStatus.Paid && order.withdrawalStatus == WithdrawalStatus.Waiting) {
+            withdrawOrder(order.orderId);
           }
         }
       }

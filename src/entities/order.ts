@@ -1,5 +1,18 @@
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
+export enum PaymentStatus {
+  Pending = 'pending',
+  Paid = 'paid',
+  TimedOut = 'timed_out'
+}
+// enums.ts
+export enum WithdrawalStatus {
+  Waiting = 'waiting',
+  Failed = 'failed',
+  Completed = 'completed',
+  None = 'none'
+}
+
 @Entity()
 export class Order {
   @PrimaryGeneratedColumn()
@@ -20,11 +33,11 @@ export class Order {
   @Column({ nullable: true })
   callback?: string;
 
-  @Column()
-  paymentStatus!: string;
+  @Column({ type: 'text', default: PaymentStatus.Pending })
+  paymentStatus!: PaymentStatus;
 
-  @Column()
-  withdrawalStatus!: string;
+  @Column({ type: 'text', default: WithdrawalStatus.Waiting })
+  withdrawalStatus!: WithdrawalStatus;
 
   @Column()
   paymentAccount!: string;

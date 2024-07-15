@@ -58,15 +58,17 @@ export const subscribeToBlocks = async () => {
       if (section === 'balances' && (method === 'transfer' || method === 'transferKeepAlive')) {
         const [to, amount] = extrinsic.args.map(arg => arg.toString());
         const order = await orderRepository.findOne({ where: { paymentAccount: to } });
-        if (order && order.paymentStatus !== 'paid') {
+        if (order && order.paymentStatus !== 'paid' && order.amount !== undefined) {
           const amountInUnits = parseFloat(amount) / Math.pow(10, chainDecimals);
           logger.info(`Transaction found for order ${order.orderId} in block #${header.number}`);
-          if (order.amount && order.amount <= amountInUnits) {
+          order.repaidAmount = (order.repaidAmount || 0) + amountInUnits;
+          if (order.amount && order.amount <= order.repaidAmount) {
             order.paymentStatus = 'paid';
             logger.info(`Order with id: ${order.orderId} was succesfully repaid`);
           } else {
-            // TODO:: need to add additional field to order to track repaid amount
-            logger.info(`Order with id: ${order.orderId} was partially repaid`);
+            logger.info(
+              `Order with id: ${order.orderId} was partially repaid, missing amount: ${order.amount-order.repaidAmount}`
+            );
           }
           await orderRepository.save(order);
           const transactionHash = extrinsic.hash.toHex();
@@ -91,6 +93,7 @@ export const subscribeToBlocks = async () => {
                 payment_status: order.paymentStatus,
                 withdrawal_status: order.withdrawalStatus,
                 amount: order.amount,
+                amount_repaid: order.repaidAmount,
                 currency: order.currency,
                 timestamp: new Date().toISOString(),
                 transaction_hash: transactionHash,

@@ -11,6 +11,9 @@ export class Order {
   @Column({ type: 'float', nullable: true })
   amount?: number;
 
+  @Column({ type: 'float', default: 0 })
+  repaidAmount?: number;
+
   @Column({ nullable: true })
   currency?: string;
 

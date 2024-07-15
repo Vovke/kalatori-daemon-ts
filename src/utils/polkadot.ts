@@ -1,4 +1,4 @@
-import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
+import { ApiPromise, WsProvider } from '@polkadot/api';
 import { logger } from './logger';
 import { Order } from '../entities/order';
 import { logTransaction } from '../services/transactionService';
@@ -44,6 +44,9 @@ export const subscribeToBlocks = async () => {
   const api = await connectPolkadot();
   const orderRepository = dataSource.getRepository(Order);
 
+  const [chainDecimals] = api.registry.chainDecimals;
+  const [chainToken] = api.registry.chainTokens;
+
   api.rpc.chain.subscribeNewHeads(async (header) => {
     logger.info(`New block #${header.number}`);
 
@@ -51,28 +54,31 @@ export const subscribeToBlocks = async () => {
     const { block } = await api.rpc.chain.getBlock(blockHash);
 
     for (const [index, extrinsic] of block.extrinsics.entries()) {
-      const { method: { method, section } } = extrinsic;
-
-      if (section === 'balances' && method === 'transferKeepAlive') {
-        const [from, to, value] = extrinsic.args.map(arg => arg.toString());
-
+      const { method: { method, section }, signer } = extrinsic;
+      if (section === 'balances' && (method === 'transfer' || method === 'transferKeepAlive')) {
+        const [to, amount] = extrinsic.args.map(arg => arg.toString());
         const order = await orderRepository.findOne({ where: { paymentAccount: to } });
         if (order && order.paymentStatus !== 'paid') {
+          const amountInUnits = parseFloat(amount) / Math.pow(10, chainDecimals);
           logger.info(`Transaction found for order ${order.orderId} in block #${header.number}`);
-
-          order.paymentStatus = 'paid';
+          if (order.amount && order.amount <= amountInUnits) {
+            order.paymentStatus = 'paid';
+            logger.info(`Order with id: ${order.orderId} was succesfully repaid`);
+          } else {
+            // TODO:: need to add additional field to order to track repaid amount
+            logger.info(`Order with id: ${order.orderId} was partially repaid`);
+          }
           await orderRepository.save(order);
-
           const transactionHash = extrinsic.hash.toHex();
           await logTransaction({
             blockNumber: header.number.toNumber(),
             positionInBlock: index,
             timestamp: new Date(),
             transactionBytes: extrinsic.toHex(),
-            sender: from,
+            sender: signer.toString(),
             recipient: to,
-            amount: parseFloat(value),
-            currency: order.currency,
+            amount: amountInUnits,
+            currency: chainToken, // TODO: Works just for polkadot currently
             status: 'paid',
             chain_name: Config.getInstance().config.kalatori.chainName,
             transaction_hash: transactionHash

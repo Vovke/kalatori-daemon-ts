@@ -2,7 +2,7 @@ import dataSource from '../data-source';
 import { Order } from '../entities/order';
 import { logTransaction } from './transactionService';
 import { Keyring } from '@polkadot/api';
-import { cryptoWaitReady } from '@polkadot/util-crypto';
+import { cryptoWaitReady, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import Config from '../config/config';
 import { NotFoundError } from '../errors/notFoundError';
 import { connectPolkadot } from '../utils/polkadot';
@@ -22,7 +22,10 @@ export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
     await cryptoWaitReady();
     const keyring = new Keyring({ type: 'sr25519' });
     const derived = keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
-    order.paymentAccount = derived.address;
+    const publicKey = decodeAddress(derived.address);
+
+    // Polkadot and AssetHub addresses
+    order.paymentAccount = encodeAddress(publicKey, 0);
     order.recipient = config.kalatori.recipient;
   }
 

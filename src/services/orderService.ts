@@ -6,7 +6,6 @@ import { cryptoWaitReady } from '@polkadot/util-crypto';
 import Config from '../config/config';
 import { NotFoundError } from '../errors/notFoundError';
 import { connectPolkadot } from '../utils/polkadot';
-import {west} from '../utils/legacy';
 
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
   const orderRepository = dataSource.getRepository(Order);

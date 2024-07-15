@@ -1,5 +1,6 @@
 endpoint: wss://polkadot-asset-hub-rpc.polkadot.io
 #endpoint: wss://statemint.api.onfinality.io/public-ws
+#endpoint: wss://rpc.polkadot.io
 
 import-storage:
   System:

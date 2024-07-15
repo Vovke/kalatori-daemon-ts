@@ -1,14 +1,5 @@
 import request from 'supertest';
 import app from '../../src/app';
-import { initializeDataSource, closeDataSource } from '../../src/data-source';
-
-beforeAll(async () => {
-  await initializeDataSource();
-});
-
-afterAll(async () => {
-  await closeDataSource();
-});
 
 describe('Status and Health Endpoints', () => {
   it('should return status information', async () => {

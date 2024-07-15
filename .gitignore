@@ -2,7 +2,8 @@ node_modules/
 dist/
 .env
 kalatori.sqlite
-.idea
+.idea/
+.vscode/
 print_structure.sh
 output_buffer.txt
 combined.log

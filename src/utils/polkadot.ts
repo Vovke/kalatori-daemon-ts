@@ -1,4 +1,4 @@
-import { ApiPromise, WsProvider } from '@polkadot/api';
+import { ApiPromise, WsProvider, Keyring } from '@polkadot/api';
 import { logger } from './logger';
 import { Order } from '../entities/order';
 import { logTransaction } from '../services/transactionService';
@@ -42,9 +42,6 @@ export const connectPolkadot = async (retries: number = Config.getInstance().con
 
 export const subscribeToBlocks = async () => {
   const api = await connectPolkadot();
-  if (!dataSource.isInitialized) {
-    throw new Error('Data source is not initialized');
-  }
   const orderRepository = dataSource.getRepository(Order);
 
   api.rpc.chain.subscribeNewHeads(async (header) => {
@@ -56,11 +53,10 @@ export const subscribeToBlocks = async () => {
     for (const [index, extrinsic] of block.extrinsics.entries()) {
       const { method: { method, section } } = extrinsic;
 
-      if (section === 'balances' && method === 'transfer') {
+      if (section === 'balances' && method === 'transferKeepAlive') {
         const [from, to, value] = extrinsic.args.map(arg => arg.toString());
 
         const order = await orderRepository.findOne({ where: { paymentAccount: to } });
-
         if (order && order.paymentStatus !== 'paid') {
           logger.info(`Transaction found for order ${order.orderId} in block #${header.number}`);
 
@@ -78,7 +74,7 @@ export const subscribeToBlocks = async () => {
             amount: parseFloat(value),
             currency: order.currency,
             status: 'paid',
-            chain_name: Config.getInstance().config.kalatori.chainName,  // Use the selected chain name
+            chain_name: Config.getInstance().config.kalatori.chainName,
             transaction_hash: transactionHash
           });
 

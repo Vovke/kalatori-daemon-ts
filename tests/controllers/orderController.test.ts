@@ -1,40 +1,8 @@
-import 'reflect-metadata';
-import { createConnection, getConnection, getRepository } from 'typeorm';
+// import 'reflect-metadata';
 import request from 'supertest';
 import app from '../../src/app';
-import { Order } from '../../src/entities/order';
-import { Transaction } from '../../src/entities/transaction';
-
-beforeAll(async () => {
-  await createConnection({
-    type: 'sqlite',
-    database: ':memory:',
-    dropSchema: true,
-    entities: [Order, Transaction], // Include all entities here
-    synchronize: true,
-    logging: false,
-  });
-});
-
-afterAll(async () => {
-  const connection = getConnection();
-  if (connection.isConnected) {
-    await connection.close();
-  }
-});
 
 describe('Order Controller', () => {
-  beforeEach(async () => {
-    const connection = getConnection();
-    await connection.synchronize(true);
-  });
-
-  afterEach(async () => {
-    const orderRepository = getRepository(Order);
-    const transactionRepository = getRepository(Transaction);
-    await orderRepository.query(`DELETE FROM "order"`);
-    await transactionRepository.query(`DELETE FROM "transaction"`);
-  });
 
   const orderId = 'testOrder123';
   const orderData = {

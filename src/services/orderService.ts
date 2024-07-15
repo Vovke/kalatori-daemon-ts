@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import dataSource from '../data-source';
 import { Order } from '../entities/order';
 import { logTransaction } from './transactionService';
 import { Keyring } from '@polkadot/api';
@@ -6,9 +6,10 @@ import { cryptoWaitReady } from '@polkadot/util-crypto';
 import Config from '../config/config';
 import { NotFoundError } from '../errors/notFoundError';
 import { connectPolkadot } from '../utils/polkadot';
+import {west} from '../utils/legacy';
 
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
-  const orderRepository = getRepository(Order);
+  const orderRepository = dataSource.getRepository(Order);
   const config = Config.getInstance().config;
   let order = await orderRepository.findOne({ where: { orderId } });
   const existing = !!order;
@@ -50,7 +51,7 @@ export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
 };
 
 export const withdrawOrder = async (orderId: string) => {
-  const orderRepository = getRepository(Order);
+  const orderRepository = dataSource.getRepository(Order);
   const config = Config.getInstance().config;
   const order = await orderRepository.findOne({ where: { orderId } });
   if (!order) throw new NotFoundError('Order not found');
@@ -96,7 +97,7 @@ export const withdrawOrder = async (orderId: string) => {
 };
 
 export const getOrder = async (orderId: string) => {
-  const orderRepository = getRepository(Order);
+  const orderRepository = dataSource.getRepository(Order);
   const order = await orderRepository.findOne({ where: { orderId } });
   if (!order) throw new NotFoundError('Order not found');
 

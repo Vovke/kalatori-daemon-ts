@@ -1,11 +1,15 @@
-const { dataSource, initializeDataSource, closeDataSource } = require('./src/data-source');
+const { dataSource } = require('./src/data-source');
 
 beforeAll(async () => {
-  await initializeDataSource();
+  if(!dataSource.isInitialized) {
+    await dataSource.initialize();
+  }
 });
 
 afterAll(async () => {
-  await closeDataSource();
+  if(dataSource.isInitialized) {
+    await dataSource.destroy();
+  }
 });
 
 beforeEach(async () => {

@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "target": "ES2020",

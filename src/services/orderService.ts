@@ -1,11 +1,12 @@
-import dataSource from '../data-source';
-import { Order } from '../entities/order';
-import { logTransaction } from './transactionService';
-import { Keyring } from '@polkadot/api';
+import { ApiPromise, Keyring } from '@polkadot/api';
 import { cryptoWaitReady, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
+import { logger } from '../utils/logger';
 import Config from '../config/config';
+import dataSource from '../data-source';
+import { Order, PaymentStatus, WithdrawalStatus } from '../entities/order';
 import { NotFoundError } from '../errors/notFoundError';
-import { connectPolkadot } from '../utils/polkadot';
+import { connectPolkadot, preparePolkadotAddress } from '../utils/polkadot';
+import { logTransaction } from './transactionService';
 
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
   const orderRepository = dataSource.getRepository(Order);
@@ -16,16 +17,15 @@ export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
   if (!order) {
     order = new Order();
     order.orderId = orderId;
-    order.paymentStatus = 'pending';
-    order.withdrawalStatus = 'none';
+    order.paymentStatus = PaymentStatus.Pending;
+    order.withdrawalStatus = WithdrawalStatus.Waiting;
 
+    // TODO: Move to polkadot.ts
     await cryptoWaitReady();
     const keyring = new Keyring({ type: 'sr25519' });
     const derived = keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
-    const publicKey = decodeAddress(derived.address);
 
-    // Polkadot and AssetHub addresses
-    order.paymentAccount = encodeAddress(publicKey, 0);
+    order.paymentAccount = preparePolkadotAddress(derived.address);
     order.recipient = config.kalatori.recipient;
   }
 
@@ -59,14 +59,15 @@ export const withdrawOrder = async (orderId: string) => {
   if (!order) throw new NotFoundError('Order not found');
 
   const api = await connectPolkadot();
-  const keyring = new Keyring({ type: 'sr25519' });
   await cryptoWaitReady();
+  const keyring = new Keyring({ type: 'sr25519' });
   const derived = keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
 
   const chainName = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc))?.name || 'unknown';
 
-  const transfer = api.tx.balances.transferAll(order.recipient, true);
-
+  const toAddress = preparePolkadotAddress(order.recipient);
+  const transfer = api.tx.balances.transferAll(toAddress, true);
+  logger.info(`Ready to transfer assets from ${toAddress} to ${derived.address}`);
   const unsub = await transfer.signAndSend(derived, async ({ status }) => {
     if (status.isInBlock || status.isFinalized) {
       const blockHash = status.isInBlock ? status.asInBlock : status.asFinalized;
@@ -74,9 +75,9 @@ export const withdrawOrder = async (orderId: string) => {
       const blockNumber = signedBlock.block.header.number.toNumber();
       const hash = transfer.hash.toHex();
 
-      order.withdrawalStatus = 'completed';
+      order.withdrawalStatus = WithdrawalStatus.Completed;
       await orderRepository.save(order);
-
+      logger.info(`Successfully transfered assets from ${order.paymentAccount} to ${order.recipient}`);
       await logTransaction({
         blockNumber,
         positionInBlock: 0,

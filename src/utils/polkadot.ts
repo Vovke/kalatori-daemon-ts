@@ -1,4 +1,5 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import axios from 'axios';
 import { withdrawOrder } from '../services/orderService';
 import Config, { updateConfig } from '../config/config';
@@ -10,6 +11,11 @@ import { logger } from './logger';
 let api: ApiPromise | null = null;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const preparePolkadotAddress = (address: string) => {
+  const publicKey = decodeAddress(address);
+  return encodeAddress(publicKey, 0);
+};
 
 export const connectPolkadot = async (retries: number = Config.getInstance().config.blockchain.maxRetries): Promise<ApiPromise> => {
   if (!api) {

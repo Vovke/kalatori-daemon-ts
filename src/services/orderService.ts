@@ -1,11 +1,9 @@
-import { ApiPromise, Keyring } from '@polkadot/api';
-import { cryptoWaitReady, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import { logger } from '../utils/logger';
 import Config from '../config/config';
 import dataSource from '../data-source';
 import { Order, PaymentStatus, WithdrawalStatus } from '../entities/order';
 import { NotFoundError } from '../errors/notFoundError';
-import { connectPolkadot, preparePolkadotAddress } from '../utils/polkadot';
+import { connectPolkadot, generateDerivedKeyring, preparePolkadotAddress } from '../utils/polkadot';
 import { logTransaction } from './transactionService';
 
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
@@ -20,13 +18,10 @@ export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
     order.paymentStatus = PaymentStatus.Pending;
     order.withdrawalStatus = WithdrawalStatus.Waiting;
 
-    // TODO: Move to polkadot.ts
-    await cryptoWaitReady();
-    const keyring = new Keyring({ type: 'sr25519' });
-    const derived = keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
+    const derived = await generateDerivedKeyring(orderId);
 
     order.paymentAccount = preparePolkadotAddress(derived.address);
-    order.recipient = config.kalatori.recipient;
+    order.recipient = preparePolkadotAddress(config.kalatori.recipient);
   }
 
   if (orderData.amount) order.amount = orderData.amount;
@@ -59,15 +54,16 @@ export const withdrawOrder = async (orderId: string) => {
   if (!order) throw new NotFoundError('Order not found');
 
   const api = await connectPolkadot();
-  await cryptoWaitReady();
-  const keyring = new Keyring({ type: 'sr25519' });
-  const derived = keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
+  const derived = await generateDerivedKeyring(orderId);
 
   const chainName = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc))?.name || 'unknown';
 
-  const toAddress = preparePolkadotAddress(order.recipient);
+  const fromAddress = order.paymentAccount;
+  const toAddress = order.recipient;
   const transfer = api.tx.balances.transferAll(toAddress, true);
-  logger.info(`Ready to transfer assets from ${toAddress} to ${derived.address}`);
+
+  logger.info(`Ready to transfer assets from ${fromAddress} to ${toAddress}`);
+
   const unsub = await transfer.signAndSend(derived, async ({ status }) => {
     if (status.isInBlock || status.isFinalized) {
       const blockHash = status.isInBlock ? status.asInBlock : status.asFinalized;
@@ -77,14 +73,14 @@ export const withdrawOrder = async (orderId: string) => {
 
       order.withdrawalStatus = WithdrawalStatus.Completed;
       await orderRepository.save(order);
-      logger.info(`Successfully transfered assets from ${order.paymentAccount} to ${order.recipient}`);
+
       await logTransaction({
         blockNumber,
         positionInBlock: 0,
         timestamp: new Date(),
         transactionBytes: transfer.toHex(),
-        sender: order.paymentAccount,
-        recipient: order.recipient,
+        sender: fromAddress,
+        recipient: toAddress,
         amount: order.amount,
         currency: order.currency,
         status: 'completed',

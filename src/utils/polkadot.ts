@@ -1,5 +1,5 @@
-import { ApiPromise, WsProvider } from '@polkadot/api';
-import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
+import { ApiPromise, Keyring, WsProvider } from '@polkadot/api';
+import { cryptoWaitReady, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import axios from 'axios';
 import { withdrawOrder } from '../services/orderService';
 import Config, { updateConfig } from '../config/config';
@@ -12,9 +12,23 @@ let api: ApiPromise | null = null;
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-export const preparePolkadotAddress = (address: string) => {
-  const publicKey = decodeAddress(address);
-  return encodeAddress(publicKey, 0);
+export const preparePolkadotAddress = (address: string): string => {
+  try {
+    const publicKey = decodeAddress(address);
+
+    return encodeAddress(publicKey, 0);
+  } catch (error) {
+    logger.error(`Error decoding address: ${address}. Error: ${error}`);
+
+    throw new Error(`Invalid address format: ${address}`);
+  }
+};
+
+export const generateDerivedKeyring = async (orderId: string) => {
+  await cryptoWaitReady();
+  const keyring = new Keyring({ type: 'sr25519' });
+  const config = Config.getInstance().config;
+  return keyring.addFromUri(`${config.kalatori.seed}//${orderId}`);
 };
 
 export const connectPolkadot = async (retries: number = Config.getInstance().config.blockchain.maxRetries): Promise<ApiPromise> => {

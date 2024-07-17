@@ -56,13 +56,24 @@ export const withdrawOrder = async (orderId: string) => {
   const api = await connectPolkadot();
   const derived = await generateDerivedKeyring(orderId);
 
-  const chainName = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc))?.name || 'unknown';
+  const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+  const chainName = chain?.name || 'unknown';
 
   const fromAddress = order.paymentAccount;
   const toAddress = order.recipient;
-  const transfer = api.tx.balances.transferAll(toAddress, true);
+  let transfer;
 
-  logger.info(`Ready to transfer assets from ${fromAddress} to ${toAddress}`);
+  if (order.currency === 'DOT') {
+    transfer = api.tx.balances.transferAll(toAddress, true);
+  } else {
+    const asset = chain?.assets?.find(asset => asset.name === order.currency);
+    if (!asset) {
+      throw new Error(`Unsupported asset: ${order.currency}`);
+    }
+    transfer = api.tx.assets.transfer(asset.id, toAddress, 8000000);
+  }
+
+  logger.info(`Ready to transfer ${order.currency} assets from ${fromAddress} to ${toAddress}`);
 
   const unsub = await transfer.signAndSend(derived, async ({ status }) => {
     if (status.isInBlock || status.isFinalized) {
@@ -73,6 +84,7 @@ export const withdrawOrder = async (orderId: string) => {
 
       order.withdrawalStatus = WithdrawalStatus.Completed;
       await orderRepository.save(order);
+      logger.info(`Successfully transferred ${order.currency} assets from ${fromAddress} to ${toAddress}`);
 
       await logTransaction({
         blockNumber,

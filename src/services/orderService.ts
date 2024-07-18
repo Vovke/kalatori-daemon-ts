@@ -4,14 +4,20 @@ import dataSource from '../data-source';
 import { Order, PaymentStatus, WithdrawalStatus } from '../entities/order';
 import { NotFoundError } from '../errors/notFoundError';
 import {
-  getAssetDecimals,
   connectPolkadot,
   generateDerivedKeyring,
   preparePolkadotAddress,
-  applyDecimals
+  getBalanceForAsset
 } from '../utils/polkadot';
 import { logTransaction } from './transactionService';
 
+export const getOrder = async (orderId: string) => {
+  const orderRepository = dataSource.getRepository(Order);
+  const order = await orderRepository.findOne({ where: { orderId } });
+  if (!order) throw new NotFoundError('Order not found');
+
+  return order;
+};
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
   const orderRepository = dataSource.getRepository(Order);
   const config = Config.getInstance().config;
@@ -79,13 +85,18 @@ export const withdrawOrder = async (orderId: string) => {
       throw new Error(`Unsupported asset: ${order.currency}`);
     }
     if (!order.amount) {
-      throw new Error('Order amount is not defined');
+      throw new Error(`Order amount is not defined for orderId:${order.orderId}`);
     }
-    const assetDecimals = await getAssetDecimals(api, asset.id);
-    const amountInUnits = applyDecimals(order.amount,assetDecimals);
-    transfer = api.tx.assets.transfer(asset.id, toAddress, amountInUnits);
+    const totalAmountAvailable = await getBalanceForAsset(api, fromAddress, asset.name);
+    // TODO: Implement logic to predict fee instead of using hard-coded value
+    const totalAmountTransferable = totalAmountAvailable - 30000;
+    if (totalAmountTransferable < 0) {
+      throw new Error(`Transferable amount is less then 0 once fee deducted for orderId:${order.orderId}`);
+    }
+    transfer = api.tx.assets.transfer(asset.id, toAddress, totalAmountTransferable);
     signerOptions = {
       tip: 0,
+      // This is a temporary solution, wasn't able to find a better way to solve it
       assetId:  { parents: 0, interior: { X2: [{ palletInstance: 50 }, { generalIndex: asset.id }] } }
     };
   }
@@ -112,7 +123,7 @@ export const withdrawOrder = async (orderId: string) => {
         recipient: toAddress,
         amount: order.amount,
         currency: order.currency,
-        status: 'completed',
+        status: 'completed', // TODO: enum for statuses
         chain_name: chainName,
         transaction_hash: hash
       });
@@ -120,14 +131,6 @@ export const withdrawOrder = async (orderId: string) => {
       unsub();
     }
   });
-
-  return order;
-};
-
-export const getOrder = async (orderId: string) => {
-  const orderRepository = dataSource.getRepository(Order);
-  const order = await orderRepository.findOne({ where: { orderId } });
-  if (!order) throw new NotFoundError('Order not found');
 
   return order;
 };

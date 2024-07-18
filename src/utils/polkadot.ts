@@ -1,8 +1,7 @@
 import { ApiPromise, Keyring, WsProvider } from '@polkadot/api';
 import { cryptoWaitReady, decodeAddress, encodeAddress } from '@polkadot/util-crypto';
+import { u32 } from '@polkadot/types';
 import axios from 'axios';
-import { Option } from '@polkadot/types';
-import { AssetMetadata } from '@polkadot/types/interfaces';
 import { withdrawOrder } from '../services/orderService';
 import Config, { updateConfig } from '../config/config';
 import dataSource from '../data-source';
@@ -24,7 +23,7 @@ export const preparePolkadotAddress = (address: string): string => {
   }
 };
 
-export const createPolkadotTransaction = async (fromAddress: string, toAddress: string, amount: string, assetName: string): Promise<any> => {
+export const createPolkadotTransaction = async (fromAddress: string, toAddress: string, amountBeforeDecimals: string, assetName: string): Promise<any> => {
   const config = Config.getInstance().config;
   const api = await connectPolkadot();
   const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
@@ -39,13 +38,50 @@ export const createPolkadotTransaction = async (fromAddress: string, toAddress: 
       throw new Error(`Unsupported asset: ${assetName}`);
     }
     const assetDecimals = await getAssetDecimals(api, asset.id);
-    const amountWithDecimals = parseFloat(amount) / Math.pow(10, assetDecimals);
+    const amountWithDecimals = applyDecimals(parseFloat(amountBeforeDecimals), assetDecimals);
     transfer = await api.tx.assets.transfer(asset.id, toAddress, amountWithDecimals);
   }
 
   return transfer;
 }
 
+export const getBalanceForAsset = async (api: ApiPromise, account: string, assetName: string): Promise<number> => {
+  try {
+    const config = Config.getInstance().config;
+    const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+
+    if (!chain) {
+      throw new Error('Chain configuration not found.');
+    }
+
+    const asset = chain?.assets?.find(asset => asset.name === assetName);
+    if (!asset) {
+      throw new Error(`Unsupported asset: ${assetName}`);
+    }
+
+    const decodedAccount = decodeAddress(account);
+
+    // Query the balance for the specified asset and account
+    const assetIdU32 = new u32(api.registry, asset.id);
+    const accountInfo = (await api.query.assets.account(assetIdU32, decodedAccount)).toJSON() as { balance: number};
+
+    // Check if accountInfo exists and has the balance property
+    if (accountInfo) {
+      const balance = accountInfo.balance;
+      return balance;
+    } else {
+      return 0;
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      logger.error(`Error fetching balance for asset ${assetName} and account ${account}: ${error.message}`);
+      throw new Error(`Unable to fetch balance for asset ${assetName} and account ${account}`);
+    } else {
+      logger.error(`Unknown error fetching balance for asset ${assetName} and account ${account}`);
+      throw new Error(`Unknown error fetching balance for asset ${assetName} and account ${account}`);
+    }
+  }
+};
 export const applyDecimals = (amount: number, decimals: number): number => {
   return amount * Math.pow(10, decimals);
 };

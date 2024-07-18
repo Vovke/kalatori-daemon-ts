@@ -3,7 +3,13 @@ import Config from '../config/config';
 import dataSource from '../data-source';
 import { Order, PaymentStatus, WithdrawalStatus } from '../entities/order';
 import { NotFoundError } from '../errors/notFoundError';
-import { connectPolkadot, generateDerivedKeyring, preparePolkadotAddress } from '../utils/polkadot';
+import {
+  getAssetDecimals,
+  connectPolkadot,
+  generateDerivedKeyring,
+  preparePolkadotAddress,
+  applyDecimals
+} from '../utils/polkadot';
 import { logTransaction } from './transactionService';
 
 export const createOrUpdateOrder = async (orderId: string, orderData: any) => {
@@ -63,6 +69,8 @@ export const withdrawOrder = async (orderId: string) => {
   const toAddress = order.recipient;
   let transfer;
 
+  let signerOptions = {};
+
   if (order.currency === 'DOT') {
     transfer = api.tx.balances.transferAll(toAddress, true);
   } else {
@@ -70,12 +78,21 @@ export const withdrawOrder = async (orderId: string) => {
     if (!asset) {
       throw new Error(`Unsupported asset: ${order.currency}`);
     }
-    transfer = api.tx.assets.transfer(asset.id, toAddress, 8000000);
+    if (!order.amount) {
+      throw new Error('Order amount is not defined');
+    }
+    const assetDecimals = await getAssetDecimals(api, asset.id);
+    const amountInUnits = applyDecimals(order.amount,assetDecimals);
+    transfer = api.tx.assets.transfer(asset.id, toAddress, amountInUnits);
+    signerOptions = {
+      tip: 0,
+      assetId:  { parents: 0, interior: { X2: [{ palletInstance: 50 }, { generalIndex: asset.id }] } }
+    };
   }
 
   logger.info(`Ready to transfer ${order.currency} assets from ${fromAddress} to ${toAddress}`);
 
-  const unsub = await transfer.signAndSend(derived, async ({ status }) => {
+  const unsub = await transfer.signAndSend(derived, signerOptions, async ({ status }) => {
     if (status.isInBlock || status.isFinalized) {
       const blockHash = status.isInBlock ? status.asInBlock : status.asFinalized;
       const signedBlock = await api.rpc.chain.getBlock(blockHash);

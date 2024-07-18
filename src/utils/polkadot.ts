@@ -24,6 +24,36 @@ export const preparePolkadotAddress = (address: string): string => {
   }
 };
 
+export const createPolkadotTransaction = async (fromAddress: string, toAddress: string, amount: string, assetName: string): Promise<any> => {
+  const config = Config.getInstance().config;
+  const api = await connectPolkadot();
+  const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+
+  let transfer;
+
+  if (assetName === 'DOT') {
+    transfer = await api.tx.balances.transferAll(toAddress, true);
+  } else {
+    const asset = chain?.assets?.find(asset => asset.name === assetName);
+    if (!asset) {
+      throw new Error(`Unsupported asset: ${assetName}`);
+    }
+    const assetDecimals = await getAssetDecimals(api, asset.id);
+    const amountWithDecimals = parseFloat(amount) / Math.pow(10, assetDecimals);
+    transfer = await api.tx.assets.transfer(asset.id, toAddress, amountWithDecimals);
+  }
+
+  return transfer;
+}
+
+export const applyDecimals = (amount: number, decimals: number): number => {
+  return amount * Math.pow(10, decimals);
+};
+
+export const reverseDecimals = (amount: number, decimals: number): number => {
+  return amount / Math.pow(10, decimals);
+};
+
 export const generateDerivedKeyring = async (orderId: string) => {
   await cryptoWaitReady();
   const keyring = new Keyring({ type: 'sr25519' });
@@ -61,14 +91,14 @@ export const connectPolkadot = async (retries: number = Config.getInstance().con
   return api;
 };
 
-const getAssetDecimals = async (api: ApiPromise, assetId: number): Promise<number> => {
+export const getAssetDecimals = async (api: ApiPromise, assetId: number): Promise<number> => {
   try {
     const assetInfo = await api.query.assets.metadata(assetId);
     const assetData = assetInfo.toJSON() as { decimals: number };
     return assetData.decimals;
   } catch (error) {
     logger.error(`Error fetching asset decimals for asset ID ${assetId}: ${error}`);
-    return 12; // Default to 12 in case of an error
+    return 6; // Default to 6 in case of an error
   }
 };
 
@@ -101,7 +131,7 @@ const processExtrinsic = async (
   const order = await orderRepository.findOne({ where: { paymentAccount: to } });
 
   if (order && order.paymentStatus !== PaymentStatus.Paid && order.amount !== undefined) {
-    const amountInUnits = parseFloat(amount) / Math.pow(10, chainDecimals);
+    const amountInUnits = reverseDecimals(parseFloat(amount), chainDecimals);
     logger.info(`Transaction found for order ${order.orderId} in block #${header.number}`);
     order.repaidAmount = (order.repaidAmount || 0) + amountInUnits;
     if (order.amount && order.amount <= order.repaidAmount) {

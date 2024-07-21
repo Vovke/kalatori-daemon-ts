@@ -138,6 +138,7 @@ export const getAssetDecimals = async (api: ApiPromise, assetId: number): Promis
   }
 };
 
+// TODO: Move to order
 const processExtrinsic = async (
   extrinsic: any,
   header: any,

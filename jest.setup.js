@@ -1,13 +1,14 @@
-const { dataSource } = require('./src/data-source');
+const dataSource = require('./src/data-source').default;
 
 beforeAll(async () => {
-  if(!dataSource.isInitialized) {
+  if (!dataSource.isInitialized) {
     await dataSource.initialize();
+    await dataSource.runMigrations();
   }
 });
 
 afterAll(async () => {
-  if(dataSource.isInitialized) {
+  if (dataSource.isInitialized) {
     await dataSource.destroy();
   }
 });

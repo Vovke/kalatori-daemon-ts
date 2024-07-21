@@ -1,13 +1,4 @@
 import Config, { updateConfig } from '../src/config/config';
-import { initializeDataSource, closeDataSource } from '../src/data-source';
-
-beforeAll(async () => {
-  await initializeDataSource();
-});
-
-afterAll(async () => {
-  await closeDataSource();
-});
 
 describe('Configuration Update', () => {
   it('should update the connected RPCs', () => {

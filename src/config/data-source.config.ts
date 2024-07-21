@@ -23,7 +23,7 @@ const getDataSourceConfig = (): DataSourceOptions => {
         ...defaultConfig,
         type: 'sqlite',
         database: ':memory:',
-        synchronize: true,
+        synchronize: false,
       };
     default: // development
       return {

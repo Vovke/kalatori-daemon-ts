@@ -12,7 +12,6 @@ import dataSource from '../../src/data-source';
 
 describe('Order Controller', () => {
   let api: ApiPromise;
-  const orderId = 'testOrder123';
   const dotOrderData = {
     amount: 100,
     currency: 'DOT',
@@ -32,7 +31,11 @@ describe('Order Controller', () => {
     await api.isReady;
   };
 
-  const createOrder = async (orderData: any) => {
+  const generateRandomOrderId = () => {
+    return `order_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  const createOrder = async (orderId: string, orderData: any) => {
     const response = await request(app)
       .post(`/v2/order/${orderId}`)
       .send(orderData);
@@ -43,7 +46,7 @@ describe('Order Controller', () => {
     return response.body;
   };
 
-  const getOrderDetails = async () => {
+  const getOrderDetails = async (orderId: string) => {
     const response = await request(app)
       .get(`/v2/order/${orderId}`);
     expect(response.status).toBe(200);
@@ -95,23 +98,15 @@ describe('Order Controller', () => {
     await api.disconnect();
   });
 
-  beforeEach(async () => {
-    if (dataSource.isInitialized) {
-      const entities = dataSource.entityMetadatas;
-      for (const entity of entities) {
-        const repository = dataSource.getRepository(entity.name);
-        await repository.query(`DELETE FROM "${entity.tableName}"`);
-      }
-    }
-  });
-
   it('should create a new order', async () => {
-    await createOrder(dotOrderData);
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, dotOrderData);
   });
 
   it('should get order details', async () => {
-    await createOrder(dotOrderData);
-    const orderDetails = await getOrderDetails();
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, dotOrderData);
+    const orderDetails = await getOrderDetails(orderId);
     expect(orderDetails).toHaveProperty('orderId', orderId);
     expect(orderDetails).toHaveProperty('amount', dotOrderData.amount);
     expect(orderDetails).toHaveProperty('currency', dotOrderData.currency);
@@ -127,23 +122,25 @@ describe('Order Controller', () => {
   });
 
   it('should create, repay, and automatically withdraw an order in DOT', async () => {
-    await createOrder(dotOrderData);
-    const orderDetails = await getOrderDetails();
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, dotOrderData);
+    const orderDetails = await getOrderDetails(orderId);
     const paymentAccount = orderDetails.paymentAccount;
     expect(paymentAccount).toBeDefined();
 
     await setupApi();
     await transferFunds(paymentAccount, dotOrderData.amount);
 
-    const repaidOrderDetails = await getOrderDetails();
+    const repaidOrderDetails = await getOrderDetails(orderId);
     expect(repaidOrderDetails.paymentStatus).toBe('paid');
     expect(repaidOrderDetails.withdrawalStatus).toBe('completed');
     expect(repaidOrderDetails.repaidAmount).toBe(dotOrderData.amount);
   });
 
   it('should create, repay, and automatically withdraw an order in USDC', async () => {
-    await createOrder(usdcOrderData);
-    const orderDetails = await getOrderDetails();
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, usdcOrderData);
+    const orderDetails = await getOrderDetails(orderId);
     const paymentAccount = orderDetails.paymentAccount;
     expect(paymentAccount).toBeDefined();
 
@@ -151,15 +148,16 @@ describe('Order Controller', () => {
     const assetId = 1337;
     await transferFunds(paymentAccount, usdcOrderData.amount, assetId);
 
-    const repaidOrderDetails = await getOrderDetails();
+    const repaidOrderDetails = await getOrderDetails(orderId);
     expect(repaidOrderDetails.paymentStatus).toBe('paid');
     expect(repaidOrderDetails.withdrawalStatus).toBe('completed');
     expect(repaidOrderDetails.repaidAmount).toBe(usdcOrderData.amount);
   });
 
   it('should not automatically withdraw an order until fully repaid', async () => {
-    await createOrder(usdcOrderData);
-    const orderDetails = await getOrderDetails();
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, usdcOrderData);
+    const orderDetails = await getOrderDetails(orderId);
     const paymentAccount = orderDetails.paymentAccount;
     expect(paymentAccount).toBeDefined();
 
@@ -169,17 +167,34 @@ describe('Order Controller', () => {
 
     // Partial repayment
     await transferFunds(paymentAccount, halfAmount, assetId);
-    let repaidOrderDetails = await getOrderDetails();
+    let repaidOrderDetails = await getOrderDetails(orderId);
     expect(repaidOrderDetails.paymentStatus).toBe('pending');
     expect(repaidOrderDetails.withdrawalStatus).toBe('waiting');
     expect(repaidOrderDetails.repaidAmount).toBe(halfAmount);
 
     // Full repayment
     await transferFunds(paymentAccount, halfAmount, assetId);
-    repaidOrderDetails = await getOrderDetails();
+    repaidOrderDetails = await getOrderDetails(orderId);
     expect(repaidOrderDetails.paymentStatus).toBe('paid');
     expect(repaidOrderDetails.withdrawalStatus).toBe('completed');
     expect(repaidOrderDetails.repaidAmount).toBe(usdcOrderData.amount);
+  });
+
+  it('should not update order if received payment in wrong currency', async () => {
+    const orderId = generateRandomOrderId();
+    await createOrder(orderId, usdcOrderData);
+    const orderDetails = await getOrderDetails(orderId);
+    const paymentAccount = orderDetails.paymentAccount;
+    expect(paymentAccount).toBeDefined();
+
+    await setupApi();
+    const assetId = 1984;
+    await transferFunds(paymentAccount, usdcOrderData.amount, assetId);
+
+    const repaidOrderDetails = await getOrderDetails(orderId);
+    expect(repaidOrderDetails.paymentStatus).toBe('pending');
+    expect(repaidOrderDetails.withdrawalStatus).toBe('waiting');
+    expect(repaidOrderDetails.repaidAmount).toBe(0);
   });
 
   it('should return 404 for non-existing order on force withdrawal', async () => {

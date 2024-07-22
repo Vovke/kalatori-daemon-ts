@@ -68,7 +68,7 @@ export const withdrawOrder = async (orderId: string) => {
   const api = await connectPolkadot();
   const derived = await generateDerivedKeyring(orderId);
 
-  const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+  const chain = config.chains.find(chain => chain.name.includes(config.kalatori.chainName));
   const chainName = chain?.name || 'unknown';
 
   const fromAddress = order.paymentAccount;

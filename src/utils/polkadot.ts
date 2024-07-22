@@ -23,10 +23,22 @@ export const preparePolkadotAddress = (address: string): string => {
   }
 };
 
+export const getAssetNameById = (assetId: number): string | undefined => {
+  const config = Config.getInstance().config;
+  const chain = config.chains.find(chain => chain.name.includes(config.kalatori.chainName));
+
+  const asset = chain?.assets?.find(asset => asset.id.toString() === assetId.toString());
+  if (asset) {
+    return asset.name;
+  }
+
+  return undefined;
+};
+
 export const createPolkadotTransaction = async (fromAddress: string, toAddress: string, amountBeforeDecimals: string, assetName: string): Promise<any> => {
   const config = Config.getInstance().config;
   const api = await connectPolkadot();
-  const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+  const chain = config.chains.find(chain => chain.name.includes(config.kalatori.chainName));
 
   let transfer;
 
@@ -134,7 +146,7 @@ export const getAssetDecimals = async (api: ApiPromise, assetId: number): Promis
     return assetData.decimals;
   } catch (error) {
     logger.error(`Error fetching asset decimals for asset ID ${assetId}: ${error}`);
-    return 6; // Default to 6 in case of an error
+    return 6; //
   }
 };
 
@@ -151,21 +163,22 @@ const processExtrinsic = async (
   assetDecimals?: number
 ) => {
   const { method: { method, section }, signer } = extrinsic;
-  let to: string, amount: string;
-
+  let to: string, amount: string, assetName: string | undefined;
   if (section === 'balances' && (method === 'transfer' || method === 'transferKeepAlive')) {
     [to, amount] = extrinsic.args.map((arg: any) => arg.toString());
+    assetName = 'DOT'; // TODO: should go from config
   } else if (section === 'assets' && (method === 'transfer' || method === 'transferKeepAlive') && assetId !== undefined) {
     const [extrinsicAssetId, toAddr, amt] = extrinsic.args.map((arg: any) => arg.toString());
     if (parseInt(extrinsicAssetId) !== assetId) return;  // Ensure the assetId matches
     to = toAddr;
     amount = amt;
     chainDecimals = assetDecimals || chainDecimals; // Use asset decimals if available
+    assetName = getAssetNameById(extrinsicAssetId);
   } else {
     return;  // Not a recognized transfer extrinsic
   }
-
-  const order = await orderRepository.findOne({ where: { paymentAccount: to } });
+  if (!assetName) return;
+  const order = await orderRepository.findOne({ where: { paymentAccount: to, currency: assetName } });
 
   if (order && order.paymentStatus !== PaymentStatus.Paid && order.amount !== undefined) {
     const amountInUnits = reverseDecimals(parseFloat(amount), chainDecimals);

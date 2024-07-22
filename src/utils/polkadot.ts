@@ -60,7 +60,7 @@ export const createPolkadotTransaction = async (fromAddress: string, toAddress: 
 export const getBalanceForAsset = async (api: ApiPromise, account: string, assetName: string): Promise<number> => {
   try {
     const config = Config.getInstance().config;
-    const chain = config.chains.find(chain => chain.endpoints.includes(config.kalatori.rpc));
+    const chain = config.chains.find(chain => chain.name === config.kalatori.chainName);
 
     if (!chain) {
       throw new Error('Chain configuration not found.');

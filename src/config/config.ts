@@ -27,7 +27,6 @@ interface AppConfig {
   kalatori: {
     seed: string;
     chainName: string;
-    rpc: string;
     decimals: number;
     recipient: string;
     remark: string;
@@ -65,7 +64,6 @@ class Config {
       kalatori: {
         seed: process.env.KALATORI_SEED || "",
         chainName: process.env.KALATORI_CHAIN_NAME || "polkadot",
-        rpc: process.env.KALATORI_RPC || "",
         decimals: parseInt(process.env.KALATORI_DECIMALS || "10", 10),
         recipient: process.env.KALATORI_RECIPIENT || "",
         remark: process.env.KALATORI_REMARK || "",
@@ -105,7 +103,6 @@ class Config {
       kalatori: Joi.object({
         seed: Joi.string().required(),
         chainName: Joi.string().required(),
-        rpc: Joi.string().required(),
         decimals: Joi.number().required(),
         recipient: Joi.string().required(),
         remark: Joi.string().required(),

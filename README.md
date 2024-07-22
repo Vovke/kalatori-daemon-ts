@@ -152,7 +152,6 @@ DATABASE_URL=kalatori_test.sqlite
 LOG_LEVEL=debug
 KALATORI_CONFIG=./config/chains.json
 KALATORI_SEED="bottom drive obey lake curtain smoke basket hold race lonely fit walk"
-KALATORI_RPC="ws://localhost:8000"
 KALATORI_CHAIN_NAME="chopsticks"
 KALATORI_DECIMALS=10
 KALATORI_RECIPIENT="5DfhGyQdFobKM8NsWvEeAKk5EQQgYe9AydgJ7rMB6E1EqRzV"

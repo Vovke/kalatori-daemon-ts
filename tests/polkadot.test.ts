@@ -12,6 +12,6 @@ describe('Polkadot Integration', () => {
 describe('Configuration', () => {
   const config = Config.getInstance().config;
   it('should use the test environment variables', () => {
-    expect(config.kalatori.rpc).toBe('ws://localhost:8000');
+    expect(config.kalatori.chainName).toBe('chopsticks');
   });
 });

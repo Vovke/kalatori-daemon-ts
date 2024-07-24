@@ -89,7 +89,7 @@ export const withdrawOrder = async (orderId: string) => {
     }
     const totalAmountAvailable = await getBalanceForAsset(api, fromAddress, asset.name);
     // TODO: Implement logic to predict fee instead of using hard-coded value
-    const totalAmountTransferable = totalAmountAvailable - 30000;
+    const totalAmountTransferable = totalAmountAvailable - 40000;
     if (totalAmountTransferable < 0) {
       throw new Error(`Transferable amount is less then 0 once fee deducted for orderId:${order.orderId}`);
     }

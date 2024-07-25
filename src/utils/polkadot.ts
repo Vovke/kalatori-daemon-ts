@@ -119,12 +119,13 @@ export const connectPolkadot = async (retries: number = Config.getInstance().con
     for (const endpoint of selectedChain.endpoints) {
       const wsProvider = new WsProvider(endpoint);
       try {
-        api = await ApiPromise.create({ provider: wsProvider });
+        api = await new ApiPromise({ provider: wsProvider }).isReadyOrError;
         updateConfig({ connectedRpcs: [endpoint] });
         logger.info(`Connected to Polkadot RPC at ${endpoint}`);
         break;
-      } catch (error) {
+      } catch (error : unknown) {
         logger.error(`Failed to connect to Polkadot RPC at ${endpoint}. Retrying with next endpoint...`);
+        await wsProvider.disconnect();
       }
     }
 

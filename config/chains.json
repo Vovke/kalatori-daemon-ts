@@ -33,6 +33,7 @@
       "native_token": "DOT",
       "decimals": 10,
       "endpoints": [
+        "ws://chopsticks:8000",
         "ws://localhost:8000"
       ],
       "assets": [

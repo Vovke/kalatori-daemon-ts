@@ -20,14 +20,14 @@ WORKDIR /app
 # Copy built application from the build stage
 COPY --from=build /app /app
 
-# Install only production dependencies
-RUN yarn install --production
+# Install dependencies including devDependencies
+RUN yarn install --production=false
 
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 16726
 
 # Set environment variable to production
-ENV NODE_ENV=production
+#ENV NODE_ENV=production
 
 # Start the application
-CMD ["node", "dist/server.js"]
+#CMD ["node", "dist/server.js"]

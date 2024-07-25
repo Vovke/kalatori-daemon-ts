@@ -79,7 +79,7 @@ describe('Order Controller', () => {
     });
 
     // Wait for transaction to be included in block
-    await new Promise(resolve => setTimeout(resolve, 4000));
+    await new Promise(resolve => setTimeout(resolve, 5000));
   };
 
   beforeAll(async () => {

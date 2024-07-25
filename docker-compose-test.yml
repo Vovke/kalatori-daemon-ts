@@ -1,26 +1,18 @@
 version: '3.8'
 
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file:
-      - .env.production
-    ports:
-      - "3000:3000"
-    depends_on:
-      - chopsticks
-
   app-test:
     build:
       context: .
       dockerfile: Dockerfile
     env_file:
       - .env.test
+    ports:
+      - "16726:16726"
     command: ["yarn", "test"]
     depends_on:
-      - chopsticks
+      chopsticks:
+        condition: service_healthy
     environment:
       NODE_ENV: test
 
@@ -31,4 +23,9 @@ services:
       - ./chopsticks/chopsticks.yml:/app/config/chopsticks.yml
     ports:
       - "8000:8000"
-    command: ["npx", "@acala-network/chopsticks@latest", "-c", "/app/config/chopsticks.yml"]
+    command: ["chopsticks", "-c", "/app/config/chopsticks.yml"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -H 'Content-Type: application/json' -d '{\"id\":1, \"jsonrpc\":\"2.0\", \"method\": \"system_health\", \"params\":[]}' http://localhost:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

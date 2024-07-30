@@ -1,4 +1,4 @@
-# Kalatori Daemon TypeScript — Non-Custodial Polkadot Payments Gateway
+# Kalatori Daemon TS — Non-Custodial Polkadot Payments Gateway
 
 ## Introduction
 
